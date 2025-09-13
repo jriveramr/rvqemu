@@ -1,111 +1,148 @@
-# Entorno de desarrollo RISC-V con QEMU y GDB
+# 🔐 Proyecto Individual: Implementación de Cifrado TEA (Tiny Encryption Algorithm) usando C y Ensamblador RISC-V en QEMU
 
-Este proyecto proporciona un entorno completo para desarrollo y depuración de programas bare-metal en arquitectura RISC-V de 32 bits, utilizando QEMU y GDB dentro de un contenedor Docker.
+Implementación del algoritmo **TEA (Tiny Encryption Algorithm)** en ensamblador **RISC-V**, 
+integrado con un programa en **C** que maneja padding **PKCS#7** y pruebas de cifrado/descifrado.
 
+## 🏗️ Arquitectura del Software
+
+El proyecto se organiza en **capas separadas de C y ensamblador**, lo que permite mantener un diseño modular, portable y fácil de depurar.
 ---
 
-## 1. Estructura del proyecto
-
-```
+### 📂 Estructura de directorios
+- **Root**
+  - `Dockerfile` → Entorno reproducible para compilar y ejecutar.
+  - `run.sh`
+    
+- **`tea_asm/`** (código de bajo nivel en ensamblador con implementacion en C)
+  - `build.sh`
+  - `data.s` → Buffers y variables de estado.
+  - `linker.ld` → Script de enlace.
+  - `main.c` → Lógica principal en C (pruebas, UART, control de flujo)
+  - `padding.h`, `padding.c` → Funciones de padding PKCS#7.
+  - `run-qemu.sh`
+  - `startup.s` → Rutinas de inicialización (stack, entorno bare-metal).
+  - `stdint.h` → Tipos enteros estándar (compatibilidad C).
+  - `tea.h` → Prototipos de funciones TEA exportadas a C.
+  - `tea_encrypt_asm.s` → Implementación TEA (cifrado).
+  - `tea_decrypt_asm.s` → Implementación TEA (descifrado).
 .
-├── Dockerfile
-├── run.sh
-├── examples/           # Ejemplos de código
-│   ├── asm-only/      # Ejemplo de ensamblador puro
-│   │   ├── test.s
-│   │   ├── linker.ld
-│   │   ├── build.sh
-│   │   └── run-qemu.sh
-│   └── c-asm/         # Ejemplo de C + ensamblador
-│       ├── example.c
-│       ├── math_asm.s
-│       ├── linker.ld
-│       ├── build.sh
-│       └── run-qemu.sh
-└── README.md
-```
-
-- `examples/` contiene diferentes ejemplos de programas RISC-V
-- `Dockerfile` define la imagen que incluye el emulador QEMU y el toolchain RISC-V
-- `run.sh` automatiza la construcción de la imagen y la ejecución del contenedor
-
-## Ejemplos disponibles
-
-### Ensamblador puro (`examples/asm-only/`)
-Programa simple escrito completamente en ensamblador que calcula la suma del 1 al 10.
-
-### C + Ensamblador (`examples/c-asm/`)
-Programa en C que llama funciones escritas en ensamblador, demostrando la integración entre ambos lenguajes. Este ejemplo incluye un archivo de inicio (startup.s) que inicializa la pila y llama a la función main de C, ya que los programas C necesitan un entorno de ejecución básico antes de ejecutar el código principal.
 
 ---
 
-## 2. Inicio rápido
+### 🔀 Separación entre capas
+- **Capa en C (alto nivel)**  
+  Responsable de:
+  - Interacción con el usuario.
+  - Preparación de datos (ejemplo: aplicar padding PKCS#7).
+  - Manejo de casos de prueba y validación de resultados.
+  - Llamadas a funciones de cifrado/descifrado (en ASM).
 
-### Paso 1: Construir el contenedor
-```bash
-chmod +x run.sh
-./run.sh
-```
+- **Capa en ensamblador (bajo nivel)**  
+  Responsable de:
+  - Implementación eficiente del algoritmo TEA a nivel de instrucciones.
+  - Uso directo de registros y operaciones aritméticas bit a bit.
+  - Control del stack e inicialización mínima para ejecutar en bare-metal.
+  - Definición de buffers y variables de estado.
+---
 
-### Paso 2: Elegir y compilar un ejemplo
-```bash
-# Para el ejemplo de ensamblador puro
-cd /home/rvqemu-dev/workspace/examples/asm-only
-./build.sh
+### 📡 Interfaces utilizadas
+La comunicación entre C y ensamblador se hace a través de qemu y gdb por medio de un contenedor de Ubuntu de Docker.
 
-# Para el ejemplo de C + ensamblador
-cd /home/rvqemu-dev/workspace/examples/c-asm
-./build.sh
-```
-
-### Paso 3: Ejecutar con QEMU y depurar
-```bash
-# En una terminal: iniciar QEMU con servidor GDB
-./run-qemu.sh
-
-# En otra terminal: conectar GDB
-docker exec -it rvqemu /bin/bash
-cd /home/rvqemu-dev/workspace/examples/[ejemplo-elegido]
-gdb-multiarch [archivo-elf]
-```
+## ⚙️ Requisitos
+Los requisitos son exactamente los mismos que en el repositorio del profesor:  
+[Repositorio rvqemu en GitLab](https://gitlab.com/jgonzalez.tec/rvqemu/)
 
 ---
 
-## 3. Uso detallado
+## 🚀 Compilación
+Compilar el proyecto (ajustar rutas según entorno):
+- Descargar el repositorio.
+- Abrir Docker
+- Abrir el terminal Ubuntu
+- Navegar al directorio donde se encuentra el repositorio, nivel Root.
+- chmod +x run.sh
+- ./run.sh
+- cd tea_asm
+- chmod +x build.sh
+- ./build.sh
+- A partir de este punto, seguir las instrucciones que se muestran en terminal.
+- Una vez iniciada la corrida, basta con usar los comandos mostrados en pantalla para asignar los breaks segun preferencia. Todo se muestra en pantalla.
 
-### Construcción del contenedor
-El script `run.sh` construye la imagen `rvqemu` y crea un contenedor interactivo que monta el directorio del proyecto en `/home/rvqemu-dev/workspace`.
+Ejecucion
+=== Sistema de Cifrado TEA con Padding ===
+--- Caso 1: (8 bytes) ---
+1. Cadena original: HOLA1234
+Clave: 0x12345678 0x9ABCDEF0 0xFEDCBA98 0x76543210
+2. Cadena cifrada (hex): BF 06 C0 66 0B F1 8F 95 ...
+3. Cadena descifrada: HOLA1234
 
-### Compilación
-Cada ejemplo incluye un script `build.sh` que maneja la compilación automáticamente.
+--- Caso 2: (n bytes) ---
+1. Cadena original: Mensaje de prueba para TEA
+Clave: 0x11223344 0x55667788 0x99AABBCC 0xDDEEFF00
+2. Cadena cifrada (hex): A1 B2 C3 D4 ...
+3. Cadena descifrada: Mensaje de prueba para TEA
 
-**Opciones de compilación utilizadas**:
-- `-march=rv32im`: arquitectura RISC-V 32 bits con extensiones I y M
-- `-mabi=ilp32`: ABI ILP32
-- `-nostdlib -ffreestanding`: entorno bare-metal
-- `-g`: información de depuración para GDB
+## ✨ Funcionalidades implementadas
 
-### Ejecución y depuración
-1. **QEMU**: `run-qemu.sh` inicia QEMU con servidor GDB en puerto 1234
-2. **GDB**: Conectar desde otra terminal para depuración interactiva
+El sistema implementa un flujo completo de **cifrado y descifrado** usando el algoritmo TEA con padding PKCS#7.  
+Las funcionalidades principales son:
 
-**Comandos útiles de GDB**:
-```gdb
-target remote :1234    # Conectar al servidor GDB
-break _start           # Punto de ruptura al inicio
-continue               # Continuar ejecución
-layout asm             # Vista de ensamblador
-layout regs            # Vista de registros
-step                   # Ejecutar siguiente instrucción
-info registers         # Mostrar registros
-monitor quit           # Finalizar sesión
-```
+1. **Inicialización del sistema**
+   - Configuración del entorno bare-metal.
+   - Definición de buffers y variables globales.
+   - Preparación del stack y entorno para la ejecución en RISC-V.
 
----
+2. **Entrada y salida por UART**
+   - Funciones en C para imprimir caracteres, cadenas y valores en formato hexadecimal.
+   - Comunicación básica con el usuario para mostrar resultados de pruebas.
 
-## 4. Detalles de los ejemplos
+3. **Manejo de cadenas de texto**
+   - Cálculo seguro de longitud (`safe_strlen`).
+   - Impresión de cadenas originales y claves utilizadas.
 
-Para información específica sobre cada ejemplo, consultar:
-- [`examples/asm-only/README.md`](examples/asm-only/README.md) - Ensamblador puro
-- [`examples/c-asm/README.md`](examples/c-asm/README.md) - C + Ensamblador
-- [`examples/README.md`](examples/README.md) - Información general
+4. **Padding PKCS#7**
+   - Implementado en `padding.c` / `padding.h`.
+   - Añade bytes de relleno cuando la cadena no completa un múltiplo del bloque (8 bytes).
+   - El padding asegura que todos los bloques sean válidos para TEA.
+   - Se incluye también la funcionalidad de **unpadding** para restaurar la longitud original tras descifrar.
+
+5. **Cifrado TEA (ensamblador)**
+   - Función `tea_encrypt_asm` en `tea_encrypt_asm.s`.
+   - Procesa bloques de 64 bits (8 bytes) usando una clave de 128 bits.
+   - Implementación optimizada a nivel de instrucciones RISC-V.
+
+6. **Descifrado TEA (ensamblador)**
+   - Función `tea_decrypt_asm` en `tea_decrypt_asm.s`.
+   - Recupera el bloque original a partir de los datos cifrados y la clave.
+
+7. **Pruebas de validación**
+   - **Caso 1:** cadena de 8 bytes (`"HOLA1234"`) para verificar cifrado básico con padding mínimo.  
+   - **Caso 2:** cadena más larga (`"Mensaje de prueba para TEA"`) con múltiples bloques y padding.  
+   - En cada caso se muestra:
+     - Cadena original.
+     - Clave utilizada.
+     - Resultado cifrado en hexadecimal.
+     - Cadena descifrada (tras aplicar unpadding).
+   - Validación de integridad: se comprueba que la longitud original se recupera correctamente.
+
+8. **Ejecución continua**
+   - Tras completar las pruebas, el sistema entra en un bucle infinito (`while(1)` con `nop`) para evitar que el programa termine en entornos bare-metal.
+
+## 📊 Discusión de Resultados
+
+Los resultados obtenidos en las pruebas demuestran que la implementación cumple con los objetivos planteados:
+
+- En el **Caso 1** (cadena de 8 bytes `"HOLA1234"`), el sistema aplicó padding correctamente, cifró el bloque mediante TEA y posteriormente lo descifró sin pérdida de información. La cadena recuperada fue idéntica a la original, lo cual valida la correcta interacción entre C y ensamblador.
+
+- En el **Caso 2** (cadena más larga `"Mensaje de prueba para TEA"`), se verificó el procesamiento de múltiples bloques y la correcta aplicación de **padding PKCS#7**. El resultado descifrado coincidió con la cadena original, y además se recuperó exactamente la longitud inicial, confirmando que el padding no introduce errores residuales.
+
+- En ambos casos, los datos cifrados impresos en **formato hexadecimal** muestran que el algoritmo transforma de manera efectiva la entrada en una secuencia aparentemente aleatoria, característica esencial de un cifrado robusto.
+
+En general:
+- La separación de responsabilidades (C para control y padding, ASM para el núcleo de TEA) facilitó la depuración y el análisis.  
+- El flujo completo (entrada → padding → cifrado → descifrado → unpadding → salida) se ejecutó con éxito.  
+- La validación de integridad asegura que no se pierde información y que el sistema puede usarse como base para cadenas de mayor tamaño o integrarse con otros módulos.
+
+✅ En conclusión, los resultados confirman que la arquitectura propuesta es funcional y cumple con los requisitos del proyecto, logrando un cifrado y descifrado correctos con soporte de padding.
+
+
