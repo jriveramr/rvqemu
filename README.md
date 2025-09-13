@@ -1,4 +1,4 @@
-# 🔐 Proyecto Individual: Implementaci´on de Cifrado TEA (Tiny Encryption Algorithm) usando C y Ensamblador RISC-V en QEMU
+# 🔐 Proyecto Individual: Implementación de Cifrado TEA (Tiny Encryption Algorithm) usando C y Ensamblador RISC-V en QEMU
 
 Implementación del algoritmo **TEA (Tiny Encryption Algorithm)** en ensamblador **RISC-V**, 
 integrado con un programa en **C** que maneja padding **PKCS#7** y pruebas de cifrado/descifrado.
